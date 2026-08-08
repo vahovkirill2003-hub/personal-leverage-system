@@ -38,5 +38,12 @@ jobs:
       - name: Migration dry-run
         run: make migration-dry-run
 
+      - name: Start local development environment
+        run: make dev-up
+
+      - name: Stop local development environment
+        if: always()
+        run: make dev-down
+
       - name: Build the single OCI image
         run: docker build --iidfile .image-id -t "pls:${GITHUB_SHA}" .
