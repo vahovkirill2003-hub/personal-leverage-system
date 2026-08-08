@@ -1,23 +1,45 @@
 services:
-  app:
+  web:
     build:
       context: .
-    command:
-      - python
-      - -c
-      - "import time; import pls; time.sleep(86400)"
+    image: pls:dev
+    command: ["python", "-m", "pls.processes.web"]
     environment:
       DATABASE_URL: postgresql://pls_dev:pls_dev_only@postgres:5432/pls_dev
       PLS_ENV: development
+      PLS_EXPECTED_MIGRATION_HEAD: ""
+      PLS_TELEGRAM_BOT_TOKEN: synthetic-dev-bot-token
+      PLS_TELEGRAM_WEBHOOK_SECRET: synthetic-dev-webhook-secret
+      PLS_PRIORITY_POLICY_VERSION: "10-decisions-log-v2:PLS-011"
+      PLS_GUARD_POLICY_VERSION: 03-state-machine-v2
+      PLS_GATE_POLICY_VERSION: 05-gates-v2
     depends_on:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "python", "-c", "import pls"]
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=2)"
       interval: 2s
       timeout: 2s
       retries: 10
       start_period: 2s
+
+  worker:
+    image: pls:dev
+    command: ["python", "-m", "pls.processes.worker"]
+    depends_on:
+      web:
+        condition: service_healthy
+
+  scheduler:
+    image: pls:dev
+    command: ["python", "-m", "pls.processes.scheduler"]
+    depends_on:
+      web:
+        condition: service_healthy
 
   postgres:
     image: postgres:17-alpine
