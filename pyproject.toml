@@ -4,17 +4,22 @@ version = "0.0.0"
 description = "Personal Leverage System pilot"
 requires-python = ">=3.12,<3.14"
 dependencies = [
-    "aiogram",
-    "alembic",
-    "fastapi",
-    "psycopg[binary,pool]",
+    "aiogram==3.30.0",
+    "alembic==1.19.0",
+    "fastapi==0.141.1",
+    "psycopg[binary,pool]==3.3.4",
 ]
+
+[project.scripts]
+pls-web = "pls.processes.web:main"
+pls-worker = "pls.processes.worker:main"
+pls-scheduler = "pls.processes.scheduler:main"
 
 [dependency-groups]
 dev = [
-    "hypothesis",
-    "pytest",
-    "ruff",
+    "hypothesis==6.165.2",
+    "pytest==9.1.1",
+    "ruff==0.16.2",
 ]
 
 [tool.uv]
@@ -31,4 +36,3 @@ line-length = 100
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP"]
-
