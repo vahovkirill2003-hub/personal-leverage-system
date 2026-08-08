@@ -20,6 +20,8 @@ MODULES = (
     "notifications",
     "cost_usage",
     "observability",
+    "health",
+    "processes",
 )
 
 
