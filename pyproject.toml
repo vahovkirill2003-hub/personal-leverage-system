@@ -1,0 +1,34 @@
+[project]
+name = "personal-leverage-system"
+version = "0.0.0"
+description = "Personal Leverage System pilot"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    "aiogram",
+    "alembic",
+    "fastapi",
+    "psycopg[binary,pool]",
+]
+
+[dependency-groups]
+dev = [
+    "hypothesis",
+    "pytest",
+    "ruff",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+addopts = "-ra --strict-config --strict-markers"
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+
