@@ -1,4 +1,4 @@
-.PHONY: sync lint test migration-dry-run build check
+.PHONY: sync lint test migration-dry-run build dev-up dev-down check
 
 sync:
 	uv sync --frozen
@@ -16,5 +16,10 @@ migration-dry-run:
 build:
 	docker build --iidfile .image-id -t pls:local .
 
-check: lint test migration-dry-run
+dev-up:
+	docker compose up --build --detach --wait
 
+dev-down:
+	docker compose down --volumes --remove-orphans
+
+check: lint test migration-dry-run
