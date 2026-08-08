@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "case_id": "synthetic-case-001",
+      "user_ref": "synthetic-user-001",
+      "chat_ref": "synthetic-private-chat-001",
+      "objective": "Synthetic development case for fixture scaffolding",
+      "personal_context": {
+        "source": "synthetic",
+        "contains_real_personal_data": false
+      }
+    }
+  ]
+}
