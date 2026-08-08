@@ -1,16 +1,21 @@
-"""TB-01 migration dry-run placeholder.
+"""Compile the full forward-only Alembic chain without touching a database."""
 
-Real Alembic migrations are introduced by TB-04. Until then CI verifies that
-the repository contains the migrations boundary and that it is import-safe.
-"""
-
+import io
 from pathlib import Path
+
+from alembic import command
+from alembic.config import Config
 
 
 def main() -> None:
-    migrations_dir = Path(__file__).resolve().parents[1] / "migrations"
-    if not migrations_dir.is_dir():
-        raise SystemExit("migrations directory is missing")
+    root = Path(__file__).resolve().parents[1]
+    config = Config(root / "alembic.ini")
+    output = io.StringIO()
+    config.output_buffer = output
+    command.upgrade(config, "head", sql=True)
+    sql = output.getvalue()
+    if "0004_runtime_privileges" not in sql:
+        raise SystemExit("migration dry-run did not reach the TB-04 head")
 
 
 if __name__ == "__main__":
