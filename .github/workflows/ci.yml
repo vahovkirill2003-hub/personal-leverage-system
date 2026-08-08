@@ -41,6 +41,11 @@ jobs:
       - name: Start local development environment
         run: make dev-up
 
+      - name: Verify liveness and readiness probes
+        run: |
+          docker compose exec -T web python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/live').read()"
+          docker compose exec -T web python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready').read()"
+
       - name: Stop local development environment
         if: always()
         run: make dev-down
