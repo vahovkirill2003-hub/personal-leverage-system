@@ -14,4 +14,4 @@ RUN uv sync --frozen --no-dev --no-install-project
 
 COPY src ./src
 
-CMD ["python", "-c", "import pls"]
+CMD ["python", "-m", "pls.processes.worker"]
