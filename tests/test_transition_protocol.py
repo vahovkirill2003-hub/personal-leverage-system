@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import os
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import fields
 from pathlib import Path
 from threading import Barrier
 from uuid import UUID
@@ -241,9 +242,17 @@ def test_paused_state_sets_status_without_terminal_lock(db: psycopg.Connection) 
     assert facts.terminal_locked_at is None
 
 
-def test_diagnostic_hold_blocks_commands_unless_explicitly_exempt(
+def test_diagnostic_hold_blocks_every_transition_without_exemption(
     db: psycopg.Connection,
 ) -> None:
+    """`17` §5: a hold exempts no state transition, so no bypass may exist.
+
+    The four exceptions of §5 either leave the case untouched
+    (`RegisterLateEvidence`, read-only diagnostics), materialize an event
+    without a transition (`FireTimer`), or change only the hold fields
+    (`ExitDiagnosticHold`, owned by TB-11). None of them is a transition, so a
+    command carrying an exemption flag would itself be the defect.
+    """
     case_id = seed_case(db)
     with db.cursor() as cursor:
         # Entering a hold is itself a versioned write (`17` §5); TB-11 owns that
@@ -258,12 +267,38 @@ def test_diagnostic_hold_blocks_commands_unless_explicitly_exempt(
         )
     db.commit()
 
-    with pytest.raises(DiagnosticHoldActive):
-        apply_transition(db, command_for(case_id, version=1))
-    assert count(db, "SELECT count(*) FROM state_transition WHERE case_id = %s", (case_id,)) == 0
+    assert "allowed_during_hold" not in {f.name for f in fields(TransitionCommand)}
 
-    outcome = apply_transition(db, command_for(case_id, version=1, allowed_during_hold=True))
-    assert outcome.case_version_after == 2
+    # Active, pause and terminal targets alike; a notification intent rides
+    # along so the outbox is checked for a partial effect too (`17` §3.5).
+    for target in ("EVIDENCE_COLLECTION", "PAUSED_USER", "CLOSED_COUNTED"):
+        with pytest.raises(DiagnosticHoldActive):
+            apply_transition(
+                db,
+                command_for(
+                    case_id,
+                    version=1,
+                    to_state=target,
+                    guards=(passing_guard(),),
+                    notifications=(
+                        OutboxIntent(
+                            logical_notification_id=f"synthetic-hold-{case_id}-{target}",
+                            kind="informational",
+                            payload_ref="synthetic-ref",
+                        ),
+                    ),
+                ),
+            )
+
+    assert count(db, "SELECT count(*) FROM state_transition WHERE case_id = %s", (case_id,)) == 0
+    assert count(db, "SELECT count(*) FROM event WHERE case_id = %s", (case_id,)) == 0
+    assert count(db, "SELECT count(*) FROM outbox WHERE case_id = %s", (case_id,)) == 0
+    with db.cursor() as cursor:
+        facts = load_case_facts(cursor, case_id, lock=False)
+    assert facts.case_version == 1
+    assert facts.current_state == "EXECUTION"
+    assert facts.current_status is None
+    assert facts.terminal_locked_at is None
 
 
 def test_unknown_target_state_is_refused_before_any_write(db: psycopg.Connection) -> None:

@@ -10,7 +10,6 @@ is the mechanism every transition must go through.
 from __future__ import annotations
 
 import json
-import os
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -116,6 +115,17 @@ class CaseFacts:
     reason_event_id: UUID | None
 
 
+def guard_policy_version() -> str:
+    """Return the guard rule version (`17` §2.3).
+
+    The version of the guard registry is bound to the version of `03`, and guard
+    semantics may change only with a new version of `03` under baseline rules.
+    That version is a property of the accepted baseline, not of a deployment, so
+    no runtime input may set this value.
+    """
+    return DEFAULT_GUARD_POLICY_VERSION
+
+
 @dataclass(frozen=True)
 class GuardOutcome:
     """One guard verdict, recorded verbatim in `state_transition.guard_results_ref`.
@@ -126,9 +136,19 @@ class GuardOutcome:
 
     guard_id: str
     passed: bool
-    rule_version: str = DEFAULT_GUARD_POLICY_VERSION
+    rule_version: str = field(default_factory=guard_policy_version)
     facts: tuple[str, ...] = ()
     reason: str | None = None
+
+    def __post_init__(self) -> None:
+        # `17` §2.2 makes the guard id and the rule version mandatory parts of
+        # every recorded verdict, and §2.3 admits exactly one registry version
+        # while `03` stands at v2. An absent or foreign value is refused here
+        # rather than written into append-only history.
+        if not self.guard_id.strip():
+            raise ValueError("guard_id must not be empty")
+        if self.rule_version != DEFAULT_GUARD_POLICY_VERSION:
+            raise ValueError(f"rule_version must be {DEFAULT_GUARD_POLICY_VERSION}")
 
     def as_record(self) -> dict[str, object]:
         return {
@@ -172,7 +192,6 @@ class TransitionCommand:
     correlation_id: UUID | None = None
     payload_ref: str | None = None
     notifications: tuple[OutboxIntent, ...] = ()
-    allowed_during_hold: bool = False
 
     def __post_init__(self) -> None:
         if self.actor_type not in ACTOR_TYPES:
@@ -194,12 +213,6 @@ class TransitionOutcome:
     case_version_after: int
     guard_results_ref: str
     guard_outcomes: tuple[GuardOutcome, ...]
-
-
-def guard_policy_version(env: dict[str, str] | None = None) -> str:
-    """Return the guard rule version, pinned to the version of `03` (`17` §2.3)."""
-    source = os.environ if env is None else env
-    return source.get("PLS_GUARD_POLICY_VERSION", "").strip() or DEFAULT_GUARD_POLICY_VERSION
 
 
 def serialize_guard_results(outcomes: Sequence[GuardOutcome]) -> str:
@@ -247,6 +260,13 @@ def apply_transition(
     transition, update the projection and its companions, commit. Any rejection
     aborts the whole transaction, so a partial effect cannot be observed
     (`17` §2.4, §8). Model and network calls never happen inside it.
+
+    A diagnostic hold admits no transition whatsoever, so no command carries an
+    exemption: of the four exceptions of `17` §5, `RegisterLateEvidence` and the
+    read-only diagnostics leave the case untouched, `FireTimer` materializes an
+    event without a transition, and `ExitDiagnosticHold` changes only the hold
+    fields. None of them goes through this function; `ExitDiagnosticHold` is
+    owned by TB-11 as its own transactional command.
     """
     if command.to_state not in STATES:
         raise UnknownState(f"state {command.to_state} is not defined by 03")
@@ -261,7 +281,7 @@ def apply_transition(
             if facts.terminal_locked_at is not None:
                 raise TerminalLocked(f"case {facts.case_id} is terminal and cannot transition")
 
-            if facts.diagnostic_hold and not command.allowed_during_hold:
+            if facts.diagnostic_hold:
                 raise DiagnosticHoldActive(f"case {facts.case_id} is under diagnostic hold")
 
             cursor.execute("SELECT now()")

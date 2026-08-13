@@ -72,10 +72,32 @@ def test_guard_outcome_carries_facts_by_reference_only() -> None:
 
 
 def test_guard_policy_version_is_pinned_to_the_state_machine_baseline() -> None:
-    assert guard_policy_version({}) == "03-state-machine-v2"
-    assert guard_policy_version({"PLS_GUARD_POLICY_VERSION": "03-state-machine-v3"}) == (
-        "03-state-machine-v3"
-    )
+    assert guard_policy_version() == "03-state-machine-v2"
+
+
+def test_the_environment_cannot_change_the_recorded_guard_policy_version(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`17` §2.3: guard semantics change only with a new version of `03`."""
+    monkeypatch.setenv("PLS_GUARD_POLICY_VERSION", "03-state-machine-v3")
+
+    assert guard_policy_version() == "03-state-machine-v2"
+
+    outcome = GuardOutcome(guard_id="G20_WITHIN_TIMEBOX", passed=True)
+    assert outcome.rule_version == "03-state-machine-v2"
+    assert '"rule_version":"03-state-machine-v2"' in serialize_guard_results([outcome])
+
+
+@pytest.mark.parametrize("rule_version", ["", "   ", "03-state-machine-v3", "custom"])
+def test_guard_outcome_refuses_an_empty_or_foreign_rule_version(rule_version: str) -> None:
+    with pytest.raises(ValueError):
+        GuardOutcome(guard_id="G20_WITHIN_TIMEBOX", passed=True, rule_version=rule_version)
+
+
+@pytest.mark.parametrize("guard_id", ["", "   "])
+def test_guard_outcome_refuses_an_empty_guard_id(guard_id: str) -> None:
+    with pytest.raises(ValueError):
+        GuardOutcome(guard_id=guard_id, passed=True)
 
 
 def test_state_sets_match_the_product_baseline() -> None:
