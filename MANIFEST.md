@@ -9,6 +9,7 @@ faf6e52d9562757d64e84861ad4b4a97654dcbf3a281e3421e8709d50a530c22  11-technical-a
 9e648b1db2dfe361e40e34491518675ea775a98a154a6017a1a8cc4ca0b88e0f  12-independent-architecture-audit-v0.md
 0d94549fc0f3a946bc9408c2ed5271950de93dc29eb56a2277e26636c26779aa  13-architecture-baseline-acceptance-v0.md
 f8550bfe0d57244e0ea38812338fb597975e11b38c3f30ff339bd0f0e451664b  14-data-model-persistence-spec-v0.1.md
+53b38170ec021b966203f14800d52ddace0c524e555730940efd059d749558e6  14-data-model-persistence-spec-v0.2.md
 317b6f925afe43484c74cd47557bc9080ca4fc2b28b205a6c02e73a021e7698f  15-spec-stage-process-deviation-v0.md
 0012efd8a2f27907b46ba3cbcbd5330d0e05a0a1bd6f1ae6ebd0d44013e4b069  16-spec-stage-acceptance-log-v0.md
 13c31c3ad691a2c891e85dfc28bef2ab8e702daa0695b880d700678b5061a84c  17-state-gate-authority-tech-spec-v0.1.md
@@ -19,3 +20,5 @@ cba9aa85d5dde29d287e4c053889bb251aadbdc5e9d180165c1f3d82f273ceea  20-security-th
 33904a1a051842e7aa7f0dfab968e3d390465263d269c38be3ef387012ed2ee2  22-verification-acceptance-test-plan-v0.md
 37e9c35df3b35fd1dafa354652f108fa50ed62f08e3aab1ae01cfa1110ce33a8  24-independent-package-audit-v0.md
 84de9dc4d0b6338c87cc5ec4e934744009cba3cf65714a9dbb50ee0c09453f3a  25-implementation-task-breakdown-v0.md
+2b179ace8c8938c9649815d1c61e5ff68c8985dd5d096940a17bb1a944228c7d  25-implementation-task-breakdown-v0.1.md
+2a17cb2d420ffd4c967e325eee76c378dd0b877172e10881184e9783a7aab3de  26-implementation-stage-decision-log-v0.md
