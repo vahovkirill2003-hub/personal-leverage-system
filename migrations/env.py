@@ -12,9 +12,28 @@ if config.config_file_name is not None:
 
 target_metadata = None
 
+SQLALCHEMY_SCHEME = "postgresql+psycopg"
+LIBPQ_SCHEMES = ("postgresql://", "postgres://")
+
+
+def _normalize_scheme(url: str) -> str:
+    """Address Psycopg 3 explicitly in a libpq-style URL.
+
+    DATABASE_URL is consumed by psycopg directly elsewhere, so it carries a libpq
+    scheme. SQLAlchemy resolves a driverless postgresql:// URL to Psycopg 2, which
+    the project does not ship; only the scheme is rewritten, and an URL that already
+    names the driver is returned unchanged.
+    """
+    for scheme in LIBPQ_SCHEMES:
+        if url.startswith(scheme):
+            return f"{SQLALCHEMY_SCHEME}://{url[len(scheme) :]}"
+    return url
+
 
 def _database_url() -> str:
-    return os.environ.get("DATABASE_URL", config.get_main_option("sqlalchemy.url"))
+    return _normalize_scheme(
+        os.environ.get("DATABASE_URL", config.get_main_option("sqlalchemy.url"))
+    )
 
 
 def run_migrations_offline() -> None:
