@@ -3,7 +3,7 @@
 
 **Статус:** кандидат на пользовательскую приёмку; не принят. До приёмки действует `17-state-gate-authority-tech-spec-v0.1.md`  
 **Дата:** 14 августа 2026  
-**Основание:** принятая для стадии реализации `17-state-gate-authority-tech-spec-v0.1.md`; кандидат `03-state-machine-v2.1.md` (§9.1 routing policy, продуктовое решение `PLS-068`); решения `PLS-069`–`PLS-072` журнала стадии `26 v0.1`  
+**Основание:** принятая для стадии реализации `17-state-gate-authority-tech-spec-v0.1.md`; кандидат `14-data-model-persistence-spec-v0.3.md` (errata `DMV-4`–`DMV-6`); кандидат `03-state-machine-v2.1.md` (§9.1 routing policy, продуктовое решение `PLS-068`); решения `PLS-069`–`PLS-072` журнала стадии `26 v0.1`  
 **Область:** формальные application commands, модель вычисления guards, транзакционный протокол переходов, протоколы Gate Engine и Consent/Authority Engine, lifecycle административного `diagnostic hold` (закрытие `AAR-R2`, часть 1 из 2), инварианты и обязательные тестовые классы  
 **За рамками:** изменение baseline, перечня состояний/статусов/guards (принадлежит `03`), критериев гейтов (принадлежит `05`), API-транспорта, промптов, кода  
 **Добавлено в v0.2:** RuleCatalog как исполнимая форма таблиц `03`, application-инвариант `SM-APP-01` и распределение тестовых классов T01, T02, T20 по задачам
@@ -271,13 +271,13 @@ Loader авторитетного контекста, resolver правила и
 
 1. `SELECT … FOR UPDATE` строки `case`; проверка `expected_case_version`; проверка terminal lock и hold.
 2. Loader и resolver по §3.3, шаги 4–6; обязателен `G27_PRE_EXPERIMENT_DISMISSIBLE`.
-3. Атомарный commit bundle: INSERT `event`; INSERT `pre_experiment_dismissal` со всеми девятью обязательными элементами (`03` §6); DELETE строки `active_experiment_slot`.
+3. Атомарный commit bundle: INSERT `event`; INSERT `pre_experiment_dismissal` с `case_id` и всеми девятью обязательными элементами (`03` §6); DELETE строки `active_experiment_slot`.
 4. `state_transition` **не пишется**; `case.state`, `case.status` и `case.version` **не изменяются**: правило не переводит кейс, а прекращает обработку входа.
 5. COMMIT.
 
-Согласование с `14` v0.2: ограничение «`state_transition` пишется только в транзакции, обновляющей `case`» соблюдается тем, что строка не создаётся вовсе; `pre_experiment_dismissal` не обязана case-у в терминальном смысле и статуса не создаёт.
+**Канонический признак прекращения — строка `pre_experiment_dismissal` с `case_id`** (`14 v0.3` §3.1, UNIQUE(case_id)). Loader §3.3 шага 4 читает её **первой**, и при её наличии resolver отклоняет любую изменяющую команду по этому кейсу до разрешения правила: административный disposition терминален для обработки входа. Отсутствие строки `active_experiment_slot` доказательством прекращения **не является** и в этой проверке не используется — слот снимается и при терминальных статусах.
 
-**Наблюдение, вынесенное отдельно.** Признака «административная обработка входа завершена» на строке `case` в `14` v0.2 §3 нет, поэтому запрет последующих команд по такому кейсу опирается на снятие slot и на отсутствие применимых правил, а не на отдельный столбец. Настоящая спецификация столбца не вводит: если он нужен, это errata к `14`, а не решение стадии.
+Согласование с `14 v0.3`: ограничение «`state_transition` пишется только в транзакции, обновляющей `case`» соблюдается тем, что строка не создаётся вовсе; disposition по-прежнему не создаёт ни состояния, ни продуктового статуса (`PLS-063`) — отдельная append-only строка достаточна. Межтабличное условие «есть dismissal ⇒ изменяющие команды отклонены» constraint-ом не выражается и закреплено за resolver-ом и обязательным тестом T20 (`14 v0.3` приложение A).
 
 ### 3.5. Late-evidence commit — `TERMINAL_ANNOTATION`
 
@@ -305,13 +305,15 @@ Loader авторитетного контекста, resolver правила и
 
 Строки `case` ещё нет, поэтому `SELECT … FOR UPDATE` по ней невозможен, а `expected_case_version` неприменим и в команде отсутствует.
 
-1. Сериализация выполняется не блокировкой строки `case`, а уникальными ограничениями: INSERT `active_experiment_slot` под `UNIQUE(user_scope)` (`14` §3) — конфликт означает невыполненный `G01_SCOPE` и отказ; UNIQUE `idempotency_key` — повтор входа не создаёт второго кейса (T06).
-2. Loader читает то, что существует вне кейса: занятость slot, исходное обращение, идемпотентный ключ.
+1. Сериализация выполняется не блокировкой строки `case`, а уникальными ограничениями: INSERT `command_receipt` под `UNIQUE(command_type, idempotency_key)` (`14 v0.3` §3.3, §4) — конфликт означает повтор входа, и команда возвращает сохранённый outcome без второго кейса (T06); INSERT `active_experiment_slot` под `UNIQUE(user_scope)` — конфликт означает невыполненный `G01_SCOPE` и отказ.
+2. Loader читает то, что существует вне кейса: сохранённый `command_receipt` по ключу, занятость slot, исходное обращение.
 3. Resolver разрешает единственное правило R01; guards берутся из него.
-4. Атомарный commit bundle: INSERT `case` (`version = 1`, state `INTAKE`); INSERT `event` `CASE_SUBMITTED`; INSERT `state_transition` с пустым `from_state` и `case_version_after = 1`; обязательные записи правила (сообщение, дата, материалы, baseline).
+4. Атомарный commit bundle: INSERT `case` (`version = 1`, state `INTAKE`); INSERT `event` `CASE_SUBMITTED`; INSERT `state_transition` с `from_state = NULL`, `case_version_before = 0`, `case_version_after = 1`, `to_state = 'INTAKE'`; INSERT `command_receipt` с outcome; обязательные записи правила (сообщение, дата, материалы, baseline).
 5. COMMIT.
 
-Пустой `from_state` означает вход в систему, а не переход из состояния. Если реализация `14` §3 потребует `NOT NULL` для `from_state`, расхождение возвращается как дефект спецификации `14` и разрешается её версией-преемником, а не обходом в коде.
+`from_state IS NULL` — SQL NULL, а не пустая строка: пустая строка формально прошла бы `NOT NULL`, но стала бы значением вне перечня состояний `03` §3 и нарушила замкнутость state machine. Допустимость NULL ровно для genesis-перехода закреплена CHECK-ом `14 v0.3` §3.3 и инвариантом §5 п. 13; для всех прочих переходов `from_state` обязателен, а версия растёт ровно на единицу.
+
+Доменная идемпотентность команды опирается на `command_receipt`, а не на `inbox (bot_id, update_id)`: транспортный ключ Telegram дедуплицирует update, но не команду, и к другим источникам входа неприменим.
 
 ### 3.8. Fail-closed свойства протоколов
 
@@ -327,7 +329,8 @@ Loader авторитетного контекста, resolver правила и
 | Протокол соответствует outcome kind правила | выбор протокола §3.2; несоответствие — отказ без частичных эффектов | T01, T20 |
 | Нетранзиционные исходы не пишут `state_transition` | §§3.4–3.6 | T01, T03 |
 | Late evidence не меняет case и версию | §3.5, инвариант I6 | T02 (I6), T03 |
-| Создание кейса сериализуется без строки `case` | §3.7: `UNIQUE(user_scope)` slot + UNIQUE `idempotency_key` | T05, T06 |
+| Создание кейса сериализуется без строки `case` | §3.7: `UNIQUE(command_type, idempotency_key)` + `UNIQUE(user_scope)` slot | T05, T06 |
+| Прекращённый кейс не принимает изменяющие команды | §3.4: `pre_experiment_dismissal.case_id` читается loader-ом первым | T20 |
 
 ## 4. Протоколы Gate и Authority Engines
 
@@ -440,6 +443,7 @@ Exhaustive transition tests по таблицам `03`; property-тесты не
 | Добавлен §1.4 TriggerRegistry: закрытый тип из 65 входных триггеров (52 − 5 + 1 + 17), технические идентификаторы 17 прозаических правил, journal-only события, две пары коллизий и их дискриминаторы | `PLS-069`, `03 v2.1` §4 |
 | Добавлен §1.5: покрытие 78/78 правил командами | `PLS-069` |
 | §3 переписан: публичный `execute_trigger` без `to_state`, `rule_id` и guards; loader авторитетного контекста после lock; разрешение правила машиной; выбор guards из правила; routing multi-target; приватный commit полного effect bundle; таблица fail-closed свойств | `PLS-069` |
+| §3.4 и §3.7 приведены к схеме `14 v0.3`: канонический признак прекращения — `pre_experiment_dismissal.case_id`, снятие slot доказательством не является; `from_state IS NULL` только для genesis-перехода; доменная идемпотентность — `command_receipt` | `DMV-4`–`DMV-6` |
 | §3.2: commit-протокол выбирается по outcome kind; §§3.4–3.7 добавлены — non-transition commit для `ADMINISTRATIVE_DISPOSITION`, late-evidence commit для `TERMINAL_ANNOTATION`, linked-case commit и creation protocol для R01 без `FOR UPDATE` по несуществующей строке | `PLS-069` |
 | §1.4: `ADDITIONAL_TIME_APPROVED` — обычный продуктовый триггер каталога `03 v2.1` §4; расхождение каталога и таблиц переходов спецификацией больше не фиксируется | `AUD-N2` закрыта `03 v2.1` |
 
