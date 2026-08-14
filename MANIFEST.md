@@ -1,13 +1,13 @@
 6f841b1550f112a0a96ce18c061898a557ebffe22b3600ae7aeff4f781eb8597  01-vision-v2.md
 c618056d7712056f3a8315de597318f27df34f2dc92a1578d42f75451fa6e071  02-workflow-spec-v2.md
-ac0975d3c9607ee5b4c57e4843e1b30072096a9b422252a7ebf6a39ad3d945e2  03-state-machine-v2.1.md
+c838afd5392276ce128c806dcad4c67b18ac9f0a02fb97f4705f27fe362e62eb  03-state-machine-v2.1.md
 a06d7febc99c86761cc90d1f8f383cda3fade4b6a789e7a342c1c94254960548  03-state-machine-v2.md
 5b8b2b9bfd08e268418bf4ebe4beb5ded70d7b48751559dd6741bc78b2018d8f  04-dossier-contract-v2.md
 8c72b803a0b4362cccd672a6cbc17a58a6d4ac9282b48c2c3b14dc5215749831  05-gates-v2.md
 6df6a3b87136370b236bbc464b50da899481c60f9ea407685c7ebf9139320488  06-independent-system-audit-v1.md
 68e9f7e45e43c014a33e3f68f769c68ecc147cc180f52a9101fb197a0afabb97  07-audit-resolution-v0.md
 6e3bd1474d514e951f26dce523079d9e84ffa62b6df30dd2465e43a37d868737  08-audit-closure-verification-v0.md
-96d8791c40fc323fdf50d6478dc53a86e22c83f33f973b77ef73d9f466c94747  09-product-baseline-acceptance-v0.1.md
+bf16212735175e01d49a3df1d03bf34b501d2c8c33d292d471968d223f416afb  09-product-baseline-acceptance-v0.1.md
 05ca7bb44650d5c6eaa72ef0ac5e52036201595ee9085c6bf99dbcd1f6b5db68  09-product-baseline-acceptance-v0.md
 a29dcc5b5a1576ab6bf73a3204717393d5e07f1b33f9b1a5513b1d232fc22f07  10-decisions-log-v2.1.md
 880e4f26edd855cb351b3ab77188728b0fe02c7d4d0922e6226a98da2b09d2e6  10-decisions-log-v2.md
@@ -19,7 +19,7 @@ f8550bfe0d57244e0ea38812338fb597975e11b38c3f30ff339bd0f0e451664b  14-data-model-
 317b6f925afe43484c74cd47557bc9080ca4fc2b28b205a6c02e73a021e7698f  15-spec-stage-process-deviation-v0.md
 0012efd8a2f27907b46ba3cbcbd5330d0e05a0a1bd6f1ae6ebd0d44013e4b069  16-spec-stage-acceptance-log-v0.md
 13c31c3ad691a2c891e85dfc28bef2ab8e702daa0695b880d700678b5061a84c  17-state-gate-authority-tech-spec-v0.1.md
-a2149bef9f66166b565335c6236ebb81fdd44c883f9718b6c7bf4f8ba519e762  17-state-gate-authority-tech-spec-v0.2.md
+ada0599c756885cc2e06fe523f9206f9a741d0eee86c4d7bc09a65df1442bbd3  17-state-gate-authority-tech-spec-v0.2.md
 89cdc0322665f6b4a7a1bd90d629be60c61a0abaf6d33850b0374879fc86d1e8  18-agent-context-contracts-v0.md
 4fd768d869372abd240338f98fd0ac8d36b37116b1c15690fd5c8b2c57243932  19-integration-api-spec-v0.md
 cba9aa85d5dde29d287e4c053889bb251aadbdc5e9d180165c1f3d82f273ceea  20-security-threat-model-retention-spec-v0.md
@@ -27,7 +27,7 @@ cba9aa85d5dde29d287e4c053889bb251aadbdc5e9d180165c1f3d82f273ceea  20-security-th
 33904a1a051842e7aa7f0dfab968e3d390465263d269c38be3ef387012ed2ee2  22-verification-acceptance-test-plan-v0.md
 37e9c35df3b35fd1dafa354652f108fa50ed62f08e3aab1ae01cfa1110ce33a8  24-independent-package-audit-v0.md
 2b179ace8c8938c9649815d1c61e5ff68c8985dd5d096940a17bb1a944228c7d  25-implementation-task-breakdown-v0.1.md
-628e4c899cc3c970f99f1cae7954968ca1776994a73211403c199effa4710995  25-implementation-task-breakdown-v0.2.md
+ae346c952f418b82425c834e42cf1949f2f2de645c14e0684c9675f2d57301dc  25-implementation-task-breakdown-v0.2.md
 84de9dc4d0b6338c87cc5ec4e934744009cba3cf65714a9dbb50ee0c09453f3a  25-implementation-task-breakdown-v0.md
-886e34e99176b236e0865a065f18ad56d53a81098dae8932ed0b3e1c7b0a2dd3  26-implementation-stage-decision-log-v0.1.md
+240c78719f512b6d567cbf45478e81e9ced8412c7d913364da283f1f13201ef3  26-implementation-stage-decision-log-v0.1.md
 2a17cb2d420ffd4c967e325eee76c378dd0b877172e10881184e9783a7aab3de  26-implementation-stage-decision-log-v0.md

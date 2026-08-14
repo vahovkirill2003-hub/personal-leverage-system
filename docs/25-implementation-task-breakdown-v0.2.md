@@ -30,7 +30,7 @@
 |---|---|---|---|---|---|
 | TB-04 | Миграции модели данных: все сущности `14` §3 + database rules §5 (append-only, set-once, slot, terminal, immutable-колонки) и DB-роли §12 | TB-02 | `14` | T03, T04 | L |
 | TB-05 | Event/State Transition ledger + транзакционный протокол `17` §3 (lock, version, guards-запись, атомарность) | TB-04 | `17` §§2–3 | T01 частично, T05 частично (гонка версий) — `PLS-067` | M |
-| TB-06 | State Machine: RuleCatalog из 78 правил `03` (`17 v0.2` §1.3), закрытый TriggerRegistry §1.4, резолвер правила и guards, routing policy multi-target, исполнительный API `17 v0.2` §3 (публичный `execute_trigger`, приватный commit effect bundle) | TB-05 | `03`, `17 v0.2` §§1.3–1.5, 2, 3 | T01 частично (правила и guards), T02 частично (I3, I4, I8), T20 частично (запрещённые маршруты §11 `03`) — `PLS-070`–`PLS-072` | L |
+| TB-06 | State Machine: RuleCatalog из 78 правил `03` (`17 v0.2` §1.3), закрытый TriggerRegistry §1.4, резолвер правила и guards, routing policy multi-target, исполнительный API `17 v0.2` §§3.1–3.8 (публичный `execute_trigger`, приватный commit effect bundle, отдельные commit-протоколы по outcome kind, включая creation protocol R01, non-transition, late-evidence и linked-case) | TB-05 | `03`, `17 v0.2` §§1.3–1.5, 2, 3 | T01 частично (правила и guards), T02 частично (I3, I4, I8), T20 частично (запрещённые маршруты §11 `03`) — `PLS-070`–`PLS-072` | L |
 | TB-07 | Реестр команд `17 v0.2` §1.2 (все 40: 24 из v0.1 + 16 доменных команд правил, включая admin) + покрытие 78/78 по §1.5 + idempotency-реестр `14` §4 | TB-05 | `17 v0.2` §§1.2, 1.5 | T06, T01 частично (доменные команды и контракты эффектов), T02 частично (I6, I7, I8) — `PLS-071`, `PLS-072` | M |
 | TB-08 | Gate Engine: attempts, sessions, coverage cells, findings, Coverage Validator, один record, counter-view, эскалация, статус attempt `BLOCKED_COVERAGE_OR_BUDGET` | TB-06 | §5.4, `14` §3.4, `17 v0.2` §4 | T10 (детерминированная часть), T11, T20 частично (`BLOCKED_COVERAGE_OR_BUDGET`) — `PLS-070`, T02 частично (I1, I5) — `PLS-071` | L |
 | TB-09 | Consent/Authority Engine: intents (issue/CAS-consume), consents, grants, expenses, workload ledger (ISO-неделя) | TB-06 | `17 v0.2` §4, `14` §3.5, `16` зап.2 | T09 (доменная часть), T06, T01 частично (контракты эффектов полномочий) — `PLS-072`, T02 частично (I9) — `PLS-071` | L |
@@ -143,7 +143,7 @@ TB-01→04→05→06→(07,08,09,10)→13 → 14–16 → 18–25 → 33 → 35�
 | TB-08: добавлен `T20 частично (BLOCKED_COVERAGE_OR_BUDGET)`; статус attempt назван явно | `PLS-070` |
 | TB-09, TB-10: добавлено `T01 частично (контракты эффектов)` | `PLS-072` |
 | TB-13: добавлены полный PASS T01 (full mock-contour PASS всех 78 правил), полный mock-PASS T02 и полный T20 на mock | `PLS-070`–`PLS-072` |
-| TB-06: добавлены закрытый TriggerRegistry, резолвер правила и guards, исполнительный API `17 v0.2` §3 | `PLS-069` |
+| TB-06: добавлены закрытый TriggerRegistry (65 триггеров), резолвер правила и guards, исполнительный API и commit-протоколы по outcome kind `17 v0.2` §§3.1–3.8 | `PLS-069` |
 | TB-07: реестр команд 24 → 40 и покрытие 78/78 по `17 v0.2` §1.5 | `PLS-069` |
 | TB-08, TB-09, TB-10, TB-11: закреплены части T02 (I1/I5, I9, I2, I10) — каждый инвариант I1–I10 имеет владельца | `PLS-071` |
 | TB-23: добавлен отдельный regression-тест T02 на границе model-proposal с явной оговоркой, что полный T02 он не блокирует | `PLS-071` |
