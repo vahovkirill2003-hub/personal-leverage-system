@@ -44,6 +44,18 @@ def rejects(db: psycopg.Connection, sql: str, params: tuple[object, ...] = ()) -
         db.execute(sql, params)
 
 
+def rejects_with(db: psycopg.Connection, sqlstate: str, statement) -> None:
+    """Assert the database refuses a statement with one specific SQLSTATE.
+
+    Naming the code keeps a test honest: a row must be rejected by the rule it
+    is aimed at (23502 not-null, 23503 foreign key, 23505 unique, 23514 check),
+    never by an unrelated failure that happens to raise.
+    """
+    with pytest.raises(psycopg.Error) as failure:
+        statement()
+    assert failure.value.sqlstate == sqlstate
+
+
 def insert_case(db: psycopg.Connection, case_id: str, *, terminal: bool = False) -> None:
     if terminal:
         db.execute(
@@ -408,3 +420,172 @@ def test_pls_retention_has_no_delete_before_tb28(db: psycopg.Connection) -> None
         assert can_delete == (False,)
     finally:
         db.execute("RESET ROLE")
+
+
+def insert_event(db: psycopg.Connection, event_id: str, case_id: str) -> None:
+    db.execute(
+        """
+        INSERT INTO event (id, case_id, type, actor_type, occurred_at)
+        VALUES (%s, %s, 'SYNTHETIC', 'system', now())
+        """,
+        (event_id, case_id),
+    )
+
+
+def dismissal(db: psycopg.Connection, row_id: str, case_id: str | None) -> None:
+    db.execute(
+        """
+        INSERT INTO pre_experiment_dismissal
+          (id, case_id, original_request_ref, dismissed_at, stage, reason, applied_rule,
+           actual_system_time_sec, disposition)
+        VALUES (%s, %s, 'synthetic-request', now(), 'INTAKE', 'synthetic-reason',
+                'R-SYNTHETIC', 1, 'synthetic-disposition')
+        """,
+        (row_id, case_id),
+    )
+
+
+def test_tb04a_dmv4_dismissal_is_addressed_and_unique(db: psycopg.Connection) -> None:
+    """`14 v0.3` §5 п. 12: the dismissal row is the canonical, addressed mark."""
+    case_id, other_case = uid(300), uid(301)
+    insert_case(db, case_id)
+    insert_case(db, other_case)
+
+    dismissal(db, uid(302), case_id)
+
+    # No case_id at all, an unknown case, and a second disposition on the same
+    # case are all refused by the database itself.
+    rejects_with(db, "23502", lambda: dismissal(db, uid(303), None))
+    rejects_with(db, "23503", lambda: dismissal(db, uid(304), uid(399)))
+    rejects_with(db, "23505", lambda: dismissal(db, uid(305), case_id))
+
+    dismissal(db, uid(306), other_case)
+
+
+def test_tb04a_dmv5_null_from_state_belongs_to_genesis_only(db: psycopg.Connection) -> None:
+    """`14 v0.3` §5 п. 13: `from_state IS NULL` exists for the genesis row alone."""
+    case_id = uid(310)
+    insert_case(db, case_id)
+    genesis_event, other_event = uid(311), uid(312)
+    insert_event(db, genesis_event, case_id)
+    insert_event(db, other_event, case_id)
+
+    def transition(
+        row_id: str,
+        event_id: str,
+        from_state: str | None,
+        to_state: str,
+        before: int,
+        after: int,
+    ) -> None:
+        db.execute(
+            """
+            INSERT INTO state_transition
+              (id, case_id, event_id, from_state, to_state, guard_results_ref,
+               case_version_before, case_version_after)
+            VALUES (%s, %s, %s, %s, %s, '[]', %s, %s)
+            """,
+            (row_id, case_id, event_id, from_state, to_state, before, after),
+        )
+
+    transition(uid(313), genesis_event, None, "INTAKE", 0, 1)
+
+    # A NULL origin outside genesis, a genesis row aimed anywhere but INTAKE, a
+    # genesis row that carries an origin state, and a version jump wider than one.
+    rejects_with(db, "23514", lambda: transition(uid(314), other_event, None, "EXECUTION", 1, 2))
+    rejects_with(db, "23514", lambda: transition(uid(315), other_event, None, "EXECUTION", 0, 1))
+    rejects_with(db, "23514", lambda: transition(uid(316), other_event, "INTAKE", "INTAKE", 0, 1))
+    rejects_with(
+        db, "23514", lambda: transition(uid(317), other_event, "INTAKE", "EXECUTION", 1, 3)
+    )
+
+    transition(uid(318), other_event, "INTAKE", "EXECUTION", 1, 2)
+
+
+def test_tb04a_dmv6_command_receipt_is_idempotent_and_append_only(
+    db: psycopg.Connection,
+) -> None:
+    """`14 v0.3` §5 п. 14: one domain effect per (command_type, idempotency_key)."""
+    case_id = uid(320)
+    insert_case(db, case_id)
+
+    def receipt(
+        row_id: str,
+        key: str,
+        *,
+        command_type: str = "SubmitOpportunity",
+        case: str | None = None,
+        actor: str = "user",
+        kind: str = "applied",
+        outcome: str | None = "synthetic-outcome",
+    ) -> None:
+        db.execute(
+            """
+            INSERT INTO command_receipt
+              (id, command_type, idempotency_key, case_id, actor_type, outcome_ref, outcome_kind)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """,
+            (row_id, command_type, key, case, actor, outcome, kind),
+        )
+
+    # A creating command has no case row yet, so case_id stays nullable.
+    receipt(uid(321), "synthetic-key-1")
+    receipt(uid(322), "synthetic-key-2", case=case_id, kind="rejected")
+
+    rejects_with(db, "23505", lambda: receipt(uid(323), "synthetic-key-1"))
+    receipt(uid(324), "synthetic-key-1", command_type="AcceptIntake", case=case_id)
+
+    # An outcome is computed before the row is written, so it is never absent;
+    # actor and outcome kinds are the closed sets of `17 v0.2` §§1.2, 3.1.
+    rejects_with(db, "23502", lambda: receipt(uid(325), "synthetic-key-3", outcome=None))
+    rejects_with(db, "23514", lambda: receipt(uid(326), "synthetic-key-4", actor="agent_run"))
+    rejects_with(db, "23514", lambda: receipt(uid(327), "synthetic-key-5", kind="maybe"))
+    rejects_with(db, "23503", lambda: receipt(uid(328), "synthetic-key-6", case=uid(398)))
+
+    rejects(db, "UPDATE command_receipt SET outcome_kind = 'applied' WHERE id = %s", (uid(322),))
+    rejects(db, "DELETE FROM command_receipt WHERE id = %s", (uid(322),))
+
+
+def test_tb04a_command_receipt_privileges_follow_the_executing_process(
+    db: psycopg.Connection,
+) -> None:
+    """`14 v0.3` §12: the worker executes commands; web has no privilege here."""
+    case_id = uid(330)
+    insert_case(db, case_id)
+
+    db.execute("SET ROLE pls_worker")
+    try:
+        db.execute(
+            """
+            INSERT INTO command_receipt
+              (id, command_type, idempotency_key, case_id, actor_type, outcome_ref, outcome_kind)
+            VALUES (%s, 'SubmitOpportunity', 'synthetic-worker-key', %s, 'user',
+                    'synthetic-outcome', 'applied')
+            """,
+            (uid(331), case_id),
+        )
+        stored = db.execute(
+            "SELECT outcome_kind FROM command_receipt WHERE id = %s", (uid(331),)
+        ).fetchone()
+        assert stored == ("applied",)
+
+        rejects(
+            db,
+            "UPDATE command_receipt SET outcome_ref = 'tampered' WHERE id = %s",
+            (uid(331),),
+        )
+        rejects(db, "DELETE FROM command_receipt WHERE id = %s", (uid(331),))
+    finally:
+        db.execute("RESET ROLE")
+
+    privileges = db.execute(
+        """
+        SELECT has_table_privilege('pls_web', 'command_receipt', 'SELECT'),
+               has_table_privilege('pls_web', 'command_receipt', 'INSERT'),
+               has_table_privilege('pls_worker', 'command_receipt', 'SELECT'),
+               has_table_privilege('pls_worker', 'command_receipt', 'INSERT'),
+               has_table_privilege('pls_worker', 'command_receipt', 'UPDATE'),
+               has_table_privilege('pls_worker', 'command_receipt', 'DELETE')
+        """
+    ).fetchone()
+    assert privileges == (False, False, True, True, False, False)
