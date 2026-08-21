@@ -1,7 +1,7 @@
 # Personal Leverage System
 ## Data Model and Persistence Specification v0.3
 
-**Статус:** кандидат на пользовательскую приёмку; не принят. После приёмки заменяет `14-data-model-persistence-spec-v0.2.md` в части трёх технических errata схемы — `pre_experiment_dismissal` (§3.1), `state_transition.from_state` (§3.3) и `command_receipt` (§3.3, §4). В остальном идентична v0.2; v0.1 и v0.2 сохраняются и не редактируются. Продуктовая семантика не изменена, нового `PLS-ID` не требуется  
+**Статус:** принят пользовательской приёмкой Кирилла 21 августа 2026; действующая версия. Заменяет `14-data-model-persistence-spec-v0.2.md` в части трёх технических errata схемы — `pre_experiment_dismissal` (§3.1), `state_transition.from_state` (§3.3) и `command_receipt` (§3.3, §4). В остальном идентична v0.2; v0.1 и v0.2 сохраняются и не редактируются. Продуктовая семантика не изменена, нового `PLS-ID` не требуется  
 **Дата:** 14 августа 2026  
 **Основание:** архитектурный baseline `11-technical-architecture-v1.1.md` (168448 байт, `faf6e5…30c22`), акт `13-architecture-baseline-acceptance-v0.md` (8073 байта, `0d9454…79aa`), продуктовый baseline v2 и решения `PLS-001–PLS-066`; errata `PAV-2` отчёта `24-independent-package-audit-v0.md` §2, принятая Кириллом (`24` §5 п. 1); технические errata `DMV-4`–`DMV-6`, выявленные при сверке `17 v0.2` §§3.4 и 3.7 с фактической схемой  
 **Область:** логическая модель данных, ключи и идентификаторы, database-инварианты и constraints, реестр idempotency keys, политика миграций, recovery projections и данные post-restore реконсиляции, retention, матрица DB-привилегий процессов (часть закрытия `AAR-R1`)  

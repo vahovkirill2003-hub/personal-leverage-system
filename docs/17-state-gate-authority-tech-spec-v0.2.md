@@ -1,9 +1,9 @@
 # Personal Leverage System
 ## State/Gate/Authority Technical Specification v0.2
 
-**Статус:** кандидат на пользовательскую приёмку; не принят. До приёмки действует `17-state-gate-authority-tech-spec-v0.1.md`  
+**Статус:** принят пользовательской приёмкой Кирилла 21 августа 2026; действующая версия. Заменяет `17-state-gate-authority-tech-spec-v0.1.md`, который сохраняется и не редактируется  
 **Дата:** 14 августа 2026  
-**Основание:** принятая для стадии реализации `17-state-gate-authority-tech-spec-v0.1.md`; кандидат `14-data-model-persistence-spec-v0.3.md` (errata `DMV-4`–`DMV-6`); кандидат `03-state-machine-v2.1.md` (§9.1 routing policy, продуктовое решение `PLS-068`); решения `PLS-069`–`PLS-072` журнала стадии `26 v0.1`  
+**Основание:** принятая для стадии реализации `17-state-gate-authority-tech-spec-v0.1.md`; принятая `14-data-model-persistence-spec-v0.3.md` (errata `DMV-4`–`DMV-6`); принятая `03-state-machine-v2.1.md` (§9.1 routing policy, продуктовое решение `PLS-068`); решения `PLS-069`–`PLS-072` журнала стадии `26 v0.1`  
 **Область:** формальные application commands, модель вычисления guards, транзакционный протокол переходов, протоколы Gate Engine и Consent/Authority Engine, lifecycle административного `diagnostic hold` (закрытие `AAR-R2`, часть 1 из 2), инварианты и обязательные тестовые классы  
 **За рамками:** изменение baseline, перечня состояний/статусов/guards (принадлежит `03`), критериев гейтов (принадлежит `05`), API-транспорта, промптов, кода  
 **Добавлено в v0.2:** RuleCatalog как исполнимая форма таблиц `03`, application-инвариант `SM-APP-01` и распределение тестовых классов T01, T02, T20 по задачам
