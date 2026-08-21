@@ -21,7 +21,7 @@ cd docs && sha256sum -c ../MANIFEST.md --ignore-missing
 
 ## Первое сообщение (скопируйте целиком)
 
-Прочитай CLAUDE.md, просмотри действующий docs/25-implementation-task-breakdown-v0.1.md и учти решения журнала стадии docs/26-implementation-stage-decision-log-v0.md.
+Прочитай CLAUDE.md, просмотри действующий docs/25-implementation-task-breakdown-v0.2.md и учти решения журнала стадии docs/26-implementation-stage-decision-log-v0.1.md.
 
 Подтверди одним коротким сообщением: (1) нормативную иерархию и запреты из CLAUDE.md; (2) что docs/ неприкосновенен; (3) первую задачу и её DoD.
 
