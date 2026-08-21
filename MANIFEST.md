@@ -16,11 +16,11 @@ faf6e52d9562757d64e84861ad4b4a97654dcbf3a281e3421e8709d50a530c22  11-technical-a
 0d94549fc0f3a946bc9408c2ed5271950de93dc29eb56a2277e26636c26779aa  13-architecture-baseline-acceptance-v0.md
 f8550bfe0d57244e0ea38812338fb597975e11b38c3f30ff339bd0f0e451664b  14-data-model-persistence-spec-v0.1.md
 53b38170ec021b966203f14800d52ddace0c524e555730940efd059d749558e6  14-data-model-persistence-spec-v0.2.md
-69e91dbe092927d59d60c810fe71952cb1752a66fa9e825d9962f88b88d87ec7  14-data-model-persistence-spec-v0.3.md
+3bd6752e7810025b1742f3062cd20392556607b7de76f2a19ee67d9e1ca33d7b  14-data-model-persistence-spec-v0.3.md
 317b6f925afe43484c74cd47557bc9080ca4fc2b28b205a6c02e73a021e7698f  15-spec-stage-process-deviation-v0.md
 0012efd8a2f27907b46ba3cbcbd5330d0e05a0a1bd6f1ae6ebd0d44013e4b069  16-spec-stage-acceptance-log-v0.md
 13c31c3ad691a2c891e85dfc28bef2ab8e702daa0695b880d700678b5061a84c  17-state-gate-authority-tech-spec-v0.1.md
-9eeb9d94a4adc2348f0e04fa0fdc7accb66d99a6f132d393bac8702a1077b799  17-state-gate-authority-tech-spec-v0.2.md
+ae5750ad6c8f5ab9b6a69baad38308eaf7fdfb6c1684d2becd54ff3945d96738  17-state-gate-authority-tech-spec-v0.2.md
 89cdc0322665f6b4a7a1bd90d629be60c61a0abaf6d33850b0374879fc86d1e8  18-agent-context-contracts-v0.md
 4fd768d869372abd240338f98fd0ac8d36b37116b1c15690fd5c8b2c57243932  19-integration-api-spec-v0.md
 cba9aa85d5dde29d287e4c053889bb251aadbdc5e9d180165c1f3d82f273ceea  20-security-threat-model-retention-spec-v0.md
@@ -28,7 +28,7 @@ cba9aa85d5dde29d287e4c053889bb251aadbdc5e9d180165c1f3d82f273ceea  20-security-th
 33904a1a051842e7aa7f0dfab968e3d390465263d269c38be3ef387012ed2ee2  22-verification-acceptance-test-plan-v0.md
 37e9c35df3b35fd1dafa354652f108fa50ed62f08e3aab1ae01cfa1110ce33a8  24-independent-package-audit-v0.md
 2b179ace8c8938c9649815d1c61e5ff68c8985dd5d096940a17bb1a944228c7d  25-implementation-task-breakdown-v0.1.md
-9f101b439d80d76f06e958d71784476795581d08a0694f6db7c4f664ee00319c  25-implementation-task-breakdown-v0.2.md
+6b47636e6e8c77f319909304cf7bdc04a086d9edd12c38e52afc585652e5db8a  25-implementation-task-breakdown-v0.2.md
 84de9dc4d0b6338c87cc5ec4e934744009cba3cf65714a9dbb50ee0c09453f3a  25-implementation-task-breakdown-v0.md
-917c4874dc8156538331a8e188c1c1d79a1e4596781604e68a8f9ff6fe7db89c  26-implementation-stage-decision-log-v0.1.md
+290c119293cd02a9845a4e32d939fc473869fccda0815f3dfbe6ce4c985005ed  26-implementation-stage-decision-log-v0.1.md
 2a17cb2d420ffd4c967e325eee76c378dd0b877172e10881184e9783a7aab3de  26-implementation-stage-decision-log-v0.md

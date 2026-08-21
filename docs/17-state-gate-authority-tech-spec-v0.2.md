@@ -315,6 +315,8 @@ Loader авторитетного контекста, resolver правила и
 
 Доменная идемпотентность команды опирается на `command_receipt`, а не на `inbox (bot_id, update_id)`: транспортный ключ Telegram дедуплицирует update, но не команду, и к другим источникам входа неприменим.
 
+Исполнитель протокола — **worker-процесс** (архитектура §1.1): web принимает webhook, пишет `inbox` и ставит задание, но команду не исполняет. Поэтому и запись `command_receipt`, и чтение сохранённого outcome при повторе выполняются под ролью `pls_worker` (`14 v0.3` §12: SELECT + INSERT; UPDATE/DELETE отклоняются БД; у `pls_web` прав на таблицу нет). Это относится ко всем командам реестра §1.2, включая `SubmitOpportunity`/R01.
+
 ### 3.8. Fail-closed свойства протоколов
 
 | Свойство | Механизм | Проверяется |
@@ -444,6 +446,7 @@ Exhaustive transition tests по таблицам `03`; property-тесты не
 | Добавлен §1.5: покрытие 78/78 правил командами | `PLS-069` |
 | §3 переписан: публичный `execute_trigger` без `to_state`, `rule_id` и guards; loader авторитетного контекста после lock; разрешение правила машиной; выбор guards из правила; routing multi-target; приватный commit полного effect bundle; таблица fail-closed свойств | `PLS-069` |
 | §3.4 и §3.7 приведены к схеме `14 v0.3`: канонический признак прекращения — `pre_experiment_dismissal.case_id`, снятие slot доказательством не является; `from_state IS NULL` только для genesis-перехода; доменная идемпотентность — `command_receipt` | `DMV-4`–`DMV-6` |
+| §3.7: исполнитель команд — worker; `command_receipt` пишется и читается под `pls_worker`, web команду не исполняет | `DMV-6`, архитектура §1.1 |
 | §3.2: commit-протокол выбирается по outcome kind; §§3.4–3.7 добавлены — non-transition commit для `ADMINISTRATIVE_DISPOSITION`, late-evidence commit для `TERMINAL_ANNOTATION`, linked-case commit и creation protocol для R01 без `FOR UPDATE` по несуществующей строке | `PLS-069` |
 | §1.4: `ADDITIONAL_TIME_APPROVED` — обычный продуктовый триггер каталога `03 v2.1` §4; расхождение каталога и таблиц переходов спецификацией больше не фиксируется | `AUD-N2` закрыта `03 v2.1` |
 
