@@ -1,7 +1,7 @@
 # Personal Leverage System
 ## State/Gate/Authority Technical Specification v0.3
 
-**Статус:** кандидат; вступает в силу с пользовательской приёмкой Кирилла. Заменяет `17-state-gate-authority-tech-spec-v0.2.md`, который сохраняется и не редактируется  
+**Статус:** принят пользовательской приёмкой Кирилла 28 августа 2026; действующая версия. Заменяет `17-state-gate-authority-tech-spec-v0.2.md`, который сохраняется и не редактируется  
 **Дата:** 28 августа 2026  
 **Основание:** принятая `17-state-gate-authority-tech-spec-v0.2.md`; решение `PLS-073` журнала стадии `26 v0.2`; `21-deployment-operations-runbook-v0.md` §4 п. 3 («устранение только compensating-командами реестра `17`»); архитектура v1.1 §13.4 («Recovery создаёт compensating command/event и оставляет trace»)  
 **Область:** формальные application commands, модель вычисления guards, транзакционный протокол переходов, протоколы Gate Engine и Consent/Authority Engine, lifecycle административного `diagnostic hold` (закрытие `AAR-R2`, часть 1 из 2), контур восстановления, инварианты и обязательные тестовые классы  
