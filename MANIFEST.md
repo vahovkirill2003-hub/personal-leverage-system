@@ -19,7 +19,7 @@ f8550bfe0d57244e0ea38812338fb597975e11b38c3f30ff339bd0f0e451664b  14-data-model-
 c140b792241b5b1fae13c996e1767d26ad113922de7e9e7b1fb07a0d5a859596  14-data-model-persistence-spec-v0.3.md
 317b6f925afe43484c74cd47557bc9080ca4fc2b28b205a6c02e73a021e7698f  15-spec-stage-process-deviation-v0.md
 0012efd8a2f27907b46ba3cbcbd5330d0e05a0a1bd6f1ae6ebd0d44013e4b069  16-spec-stage-acceptance-log-v0.md
-37194cd8b23db51f9207040aa8b46d5c057df44ec519f7d1fac6459db8993089  16-spec-stage-acceptance-log-v1.0.md
+91f425acd40d1dc4b5f7d998839394a77183e0cd37940f4b276e2ab59065aa8c  16-spec-stage-acceptance-log-v1.0.md
 13c31c3ad691a2c891e85dfc28bef2ab8e702daa0695b880d700678b5061a84c  17-state-gate-authority-tech-spec-v0.1.md
 6527859333e950bb862d4701375e611b01c22870d45201847141817ac00f06d3  17-state-gate-authority-tech-spec-v0.2.md
 e23bbc324f9a6adc9c49719895f1317eb36ec72a0d5d65022661670e4b831dbe  17-state-gate-authority-tech-spec-v0.3.md
