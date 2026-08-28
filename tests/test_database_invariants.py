@@ -361,8 +361,36 @@ def test_t04_malicious_worker_is_rejected_by_postgresql(db: psycopg.Connection) 
             """,
             (uid(214), case_id),
         )
+        # `14 v0.3` §5 п. 14 and §12: the worker is the only executor of
+        # commands, so SELECT and INSERT on `command_receipt` must succeed for
+        # it, while UPDATE and DELETE are refused by the database itself.
+        receipt_id = uid(215)
+        db.execute(
+            """
+            INSERT INTO command_receipt
+              (id, command_type, idempotency_key, case_id, actor_type, outcome_ref, outcome_kind)
+            VALUES (%s, 'SubmitOpportunity', 'synthetic-worker-receipt', %s, 'user',
+                    'synthetic-outcome', 'applied')
+            """,
+            (receipt_id, case_id),
+        )
+        assert db.execute(
+            "SELECT outcome_kind FROM command_receipt WHERE id = %s", (receipt_id,)
+        ).fetchone() == ("applied",)
+
         attacks = (
             ("UPDATE event SET type = 'TAMPERED' WHERE id = %s", (event_id,)),
+            ("UPDATE command_receipt SET outcome_kind = 'rejected' WHERE id = %s", (receipt_id,)),
+            ("DELETE FROM command_receipt WHERE id = %s", (receipt_id,)),
+            (
+                """
+                INSERT INTO command_receipt
+                  (id, command_type, idempotency_key, case_id, actor_type, outcome_ref, outcome_kind)
+                VALUES (%s, 'SubmitOpportunity', 'synthetic-worker-receipt', %s, 'user',
+                        'synthetic-second-outcome', 'applied')
+                """,
+                (uid(216), case_id),
+            ),
             ("DELETE FROM event WHERE id = %s", (event_id,)),
             (
                 "UPDATE experiment_anchor SET accepted_duration_days = 8 WHERE case_id = %s",
@@ -408,3 +436,141 @@ def test_pls_retention_has_no_delete_before_tb28(db: psycopg.Connection) -> None
         assert can_delete == (False,)
     finally:
         db.execute("RESET ROLE")
+
+
+def test_tb04a_dismissal_is_addressed_to_a_case(db: psycopg.Connection) -> None:
+    """`DMV-4`: the dismissal row itself proves that a named case was dismissed."""
+    case_id, other_case = uid(300), uid(301)
+    insert_case(db, case_id)
+    insert_case(db, other_case)
+
+    dismissal_sql = """
+        INSERT INTO pre_experiment_dismissal
+          (id, case_id, original_request_ref, dismissed_at, stage, reason, applied_rule,
+           actual_system_time_sec, disposition)
+        VALUES (%s, %s, 'synthetic-request', now(), 'INTAKE', 'synthetic-reason',
+                'R-SYNTHETIC', 12, 'synthetic-disposition')
+    """
+    db.execute(dismissal_sql, (uid(302), case_id))
+
+    # UNIQUE(case_id): at most one administrative disposition per case.
+    rejects(db, dismissal_sql, (uid(303), case_id))
+    # NOT NULL: an unaddressed dismissal proves nothing about any case.
+    rejects(
+        db,
+        """
+        INSERT INTO pre_experiment_dismissal
+          (id, original_request_ref, dismissed_at, stage, reason, applied_rule,
+           actual_system_time_sec, disposition)
+        VALUES (%s, 'synthetic-request', now(), 'INTAKE', 'synthetic-reason',
+                'R-SYNTHETIC', 12, 'synthetic-disposition')
+        """,
+        (uid(304),),
+    )
+    # FK: the addressed case must exist.
+    rejects(db, dismissal_sql, (uid(305), uid(399)))
+    # Append-only stays in force after the erratum.
+    rejects(
+        db,
+        "UPDATE pre_experiment_dismissal SET case_id = %s WHERE case_id = %s",
+        (other_case, case_id),
+    )
+    rejects(db, "DELETE FROM pre_experiment_dismissal WHERE case_id = %s", (case_id,))
+
+
+def test_tb04a_genesis_is_the_only_transition_without_a_source_state(
+    db: psycopg.Connection,
+) -> None:
+    """`DMV-5`: `from_state IS NULL` is admissible for case creation alone."""
+    genesis_case, foreign_case = uid(310), uid(311)
+    for case_id in (genesis_case, foreign_case):
+        db.execute(
+            """
+            INSERT INTO case_record (id, current_state, case_version, depth_level, timezone)
+            VALUES (%s, 'INTAKE', 0, 'std', 'UTC')
+            """,
+            (case_id,),
+        )
+    genesis_event, foreign_event = uid(312), uid(313)
+    for event_id, case_id in ((genesis_event, genesis_case), (foreign_event, foreign_case)):
+        db.execute(
+            """
+            INSERT INTO event (id, case_id, type, actor_type, occurred_at)
+            VALUES (%s, %s, 'CASE_SUBMITTED', 'user', now())
+            """,
+            (event_id, case_id),
+        )
+
+    insert_transition = """
+        INSERT INTO state_transition
+          (id, case_id, event_id, from_state, to_state, guard_results_ref,
+           case_version_before, case_version_after)
+        VALUES (%s, %s, %s, %s, %s, '[]', %s, %s)
+    """
+    db.execute(
+        insert_transition,
+        (uid(314), genesis_case, genesis_event, None, "INTAKE", 0, 1),
+    )
+
+    forbidden = (
+        # A source state exists, so version 0 is not a genesis transition.
+        (uid(315), foreign_case, foreign_event, "INTAKE", "CLARIFICATION", 0, 1),
+        # Genesis may only target INTAKE — the entry state of `03`.
+        (uid(316), foreign_case, foreign_event, None, "EXECUTION", 0, 1),
+        # Beyond genesis a source state is mandatory.
+        (uid(317), foreign_case, foreign_event, None, "INTAKE", 1, 2),
+        # Versions advance by exactly one.
+        (uid(318), foreign_case, foreign_event, "INTAKE", "CLARIFICATION", 1, 3),
+    )
+    for params in forbidden:
+        rejects(db, insert_transition, params)
+
+    assert db.execute(
+        "SELECT count(*) FROM state_transition WHERE case_id = %s", (foreign_case,)
+    ).fetchone() == (0,)
+
+
+def test_tb04a_command_receipt_is_domain_wide_and_web_has_no_access(
+    db: psycopg.Connection,
+) -> None:
+    """`DMV-6`: one domain effect per (command_type, idempotency_key), worker-only."""
+    case_id = uid(320)
+    insert_case(db, case_id)
+
+    receipt_sql = """
+        INSERT INTO command_receipt
+          (id, command_type, idempotency_key, case_id, actor_type, outcome_ref, outcome_kind)
+        VALUES (%s, %s, %s, %s, 'user', 'synthetic-outcome', %s)
+    """
+    db.execute(receipt_sql, (uid(321), "AcceptIntake", "synthetic-key", case_id, "applied"))
+    # Same command, same key: the domain effect is already recorded.
+    rejects(db, receipt_sql, (uid(322), "AcceptIntake", "synthetic-key", case_id, "rejected"))
+    # A different command may reuse the key — the pair is what is unique.
+    db.execute(
+        receipt_sql, (uid(323), "CompleteClarification", "synthetic-key", case_id, "applied")
+    )
+    # A creating command has no case row yet, so case_id stays nullable.
+    db.execute(
+        """
+        INSERT INTO command_receipt
+          (id, command_type, idempotency_key, actor_type, outcome_ref, outcome_kind)
+        VALUES (%s, 'SubmitOpportunity', 'synthetic-creation-key', 'user',
+                'synthetic-outcome', 'applied')
+        """,
+        (uid(324),),
+    )
+    rejects(db, receipt_sql, (uid(325), "AcceptIntake", "synthetic-other", case_id, "unknown"))
+
+    for privilege in ("SELECT", "INSERT", "UPDATE", "DELETE"):
+        assert db.execute(
+            "SELECT has_table_privilege('pls_web', 'command_receipt', %s)", (privilege,)
+        ).fetchone() == (False,), f"pls_web must hold no {privilege} on command_receipt"
+    for privilege, expected in (
+        ("SELECT", True),
+        ("INSERT", True),
+        ("UPDATE", False),
+        ("DELETE", False),
+    ):
+        assert db.execute(
+            "SELECT has_table_privilege('pls_worker', 'command_receipt', %s)", (privilege,)
+        ).fetchone() == (expected,), f"pls_worker {privilege} on command_receipt must be {expected}"

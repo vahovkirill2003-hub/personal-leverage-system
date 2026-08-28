@@ -51,11 +51,16 @@ class StateTransitionRecord:
 
     Written only by the transaction that also updates `case_record`; the
     (case_id, case_version_after) uniqueness is enforced by the database.
+
+    `from_state` is None only for the genesis transition of a case, which has no
+    source state to name (`14 v0.3` §3.3, `17 v0.2` §3.7). The checks below
+    mirror the database genesis CHECK so a malformed record is refused before it
+    reaches append-only history; the database remains the enforcing authority.
     """
 
     case_id: UUID
     event_id: UUID
-    from_state: str
+    from_state: str | None
     to_state: str
     guard_results_ref: str
     case_version_before: int
@@ -67,6 +72,16 @@ class StateTransitionRecord:
             raise ValueError("case_version_after must exceed case_version_before")
         if not self.guard_results_ref:
             raise ValueError("guard_results_ref must not be empty")
+        if self.from_state is None:
+            if self.case_version_before != 0 or self.case_version_after != 1:
+                raise ValueError("genesis transition must move case_version 0 to 1")
+            if self.to_state != "INTAKE":
+                raise ValueError("genesis transition must target INTAKE")
+        else:
+            if self.case_version_before == 0:
+                raise ValueError("only the genesis transition may start at case_version 0")
+            if self.case_version_after != self.case_version_before + 1:
+                raise ValueError("case_version must advance by exactly one")
 
 
 def append_event(cursor: psycopg.Cursor, event: EventRecord) -> UUID:

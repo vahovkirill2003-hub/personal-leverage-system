@@ -142,9 +142,45 @@ def test_transition_requires_recorded_guard_results() -> None:
             from_state="EXECUTION",
             to_state="EVIDENCE_COLLECTION",
             guard_results_ref="",
-            case_version_before=0,
-            case_version_after=1,
+            case_version_before=4,
+            case_version_after=5,
         )
+
+
+def test_genesis_transition_is_the_only_record_without_a_source_state() -> None:
+    """`14 v0.3` §3.3: the record type mirrors the database genesis CHECK."""
+    genesis = StateTransitionRecord(
+        case_id=uuid7(),
+        event_id=uuid7(),
+        from_state=None,
+        to_state="INTAKE",
+        guard_results_ref="[]",
+        case_version_before=0,
+        case_version_after=1,
+    )
+    assert genesis.from_state is None
+
+    forbidden = (
+        # A source state exists, so version 0 is not a genesis transition.
+        dict(from_state="INTAKE", to_state="CLARIFICATION", before=0, after=1),
+        # Genesis may only target INTAKE.
+        dict(from_state=None, to_state="EXECUTION", before=0, after=1),
+        # Beyond genesis a source state is mandatory.
+        dict(from_state=None, to_state="INTAKE", before=1, after=2),
+        # Versions advance by exactly one.
+        dict(from_state="INTAKE", to_state="CLARIFICATION", before=1, after=3),
+    )
+    for case in forbidden:
+        with pytest.raises(ValueError):
+            StateTransitionRecord(
+                case_id=uuid7(),
+                event_id=uuid7(),
+                from_state=case["from_state"],
+                to_state=case["to_state"],
+                guard_results_ref="[]",
+                case_version_before=case["before"],
+                case_version_after=case["after"],
+            )
 
 
 def test_command_requires_an_expected_version_and_known_actor() -> None:
