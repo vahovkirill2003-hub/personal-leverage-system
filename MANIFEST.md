@@ -21,6 +21,7 @@ c140b792241b5b1fae13c996e1767d26ad113922de7e9e7b1fb07a0d5a859596  14-data-model-
 0012efd8a2f27907b46ba3cbcbd5330d0e05a0a1bd6f1ae6ebd0d44013e4b069  16-spec-stage-acceptance-log-v0.md
 13c31c3ad691a2c891e85dfc28bef2ab8e702daa0695b880d700678b5061a84c  17-state-gate-authority-tech-spec-v0.1.md
 6527859333e950bb862d4701375e611b01c22870d45201847141817ac00f06d3  17-state-gate-authority-tech-spec-v0.2.md
+641207f0f8420fe9a54ea87d0b486c5de02101d45ebd0279171e405acff10b3a  17-state-gate-authority-tech-spec-v0.3.md
 89cdc0322665f6b4a7a1bd90d629be60c61a0abaf6d33850b0374879fc86d1e8  18-agent-context-contracts-v0.md
 4fd768d869372abd240338f98fd0ac8d36b37116b1c15690fd5c8b2c57243932  19-integration-api-spec-v0.md
 cba9aa85d5dde29d287e4c053889bb251aadbdc5e9d180165c1f3d82f273ceea  20-security-threat-model-retention-spec-v0.md
@@ -31,4 +32,5 @@ cba9aa85d5dde29d287e4c053889bb251aadbdc5e9d180165c1f3d82f273ceea  20-security-th
 62882eb6a51523107e4e485f31646aa2a1cb268874601b3d651e393df2cb2d96  25-implementation-task-breakdown-v0.2.md
 84de9dc4d0b6338c87cc5ec4e934744009cba3cf65714a9dbb50ee0c09453f3a  25-implementation-task-breakdown-v0.md
 3296fe24e6ca8f823c0359cee5a9c49629fc6cc8897f6e8f843b61951ba6c5fb  26-implementation-stage-decision-log-v0.1.md
+10f843dfcfb27673b98e817b232ba63185bc84b40d4591b4f8e6b1dda9debd6a  26-implementation-stage-decision-log-v0.2.md
 2a17cb2d420ffd4c967e325eee76c378dd0b877172e10881184e9783a7aab3de  26-implementation-stage-decision-log-v0.md
