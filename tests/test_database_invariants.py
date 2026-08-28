@@ -58,7 +58,7 @@ def insert_case(db: psycopg.Connection, case_id: str, *, terminal: bool = False)
         db.execute(
             """
             INSERT INTO case_record (id, current_state, case_version, depth_level, timezone)
-            VALUES (%s, 'EXECUTION', 0, 'std', 'UTC')
+            VALUES (%s, 'EXECUTION', 1, 'std', 'UTC')
             """,
             (case_id,),
         )
@@ -406,5 +406,169 @@ def test_pls_retention_has_no_delete_before_tb28(db: psycopg.Connection) -> None
             "SELECT has_table_privilege('pls_retention', 'evidence', 'DELETE')"
         ).fetchone()
         assert can_delete == (False,)
+    finally:
+        db.execute("RESET ROLE")
+
+
+def test_tb04a_dismissal_is_the_addressed_marker_of_administrative_termination(
+    db: psycopg.Connection,
+) -> None:
+    """T03 / `DMV-4`: one dismissal per case, always bound to a real case."""
+    case_id, other_case = uid(300), uid(301)
+    insert_case(db, case_id)
+    insert_case(db, other_case)
+
+    dismissal = """
+        INSERT INTO pre_experiment_dismissal
+          (id, case_id, original_request_ref, dismissed_at, stage, reason, applied_rule,
+           actual_system_time_sec, disposition)
+        VALUES (%s, %s, 'synthetic-request', now(), 'INTAKE', 'synthetic-reason',
+                'R00_SYNTHETIC', 12, 'synthetic-disposition')
+    """
+    # No case reference at all: the marker would prove nothing about which case
+    # was terminated, which is exactly the defect `DMV-4` closes.
+    rejects(
+        db,
+        """
+        INSERT INTO pre_experiment_dismissal
+          (id, original_request_ref, dismissed_at, stage, reason, applied_rule,
+           actual_system_time_sec, disposition)
+        VALUES (%s, 'synthetic-request', now(), 'INTAKE', 'synthetic-reason',
+                'R00_SYNTHETIC', 12, 'synthetic-disposition')
+        """,
+        (uid(302),),
+    )
+    rejects(db, dismissal, (uid(303), uid(399)))  # FK: no such case
+
+    db.execute(dismissal, (uid(304), case_id))
+    rejects(db, dismissal, (uid(305), case_id))  # UNIQUE(case_id)
+    db.execute(dismissal, (uid(306), other_case))
+
+
+def test_tb04a_genesis_is_the_only_transition_without_a_source_state(
+    db: psycopg.Connection,
+) -> None:
+    """T03 / `DMV-5`: `from_state IS NULL` is admissible only for case creation."""
+    case_id = uid(310)
+    insert_case(db, case_id)
+    event_id = uid(311)
+    db.execute(
+        "INSERT INTO event (id, case_id, type, actor_type, occurred_at) VALUES (%s, %s, 'SYNTHETIC', 'system', now())",
+        (event_id, case_id),
+    )
+
+    transition = """
+        INSERT INTO state_transition
+          (id, case_id, event_id, from_state, to_state, guard_results_ref,
+           case_version_before, case_version_after)
+        VALUES (%s, %s, %s, %s, %s, '[]', %s, %s)
+    """
+    # Genesis: no source state exists yet, version 0 is the state before it.
+    db.execute(transition, (uid(312), case_id, event_id, None, "INTAKE", 0, 1))
+
+    # A NULL source outside genesis, a genesis into a state other than INTAKE,
+    # a genesis that does not start from version 0, and a version jump larger
+    # than one are all rejected by the database.
+    rejects(db, transition, (uid(313), case_id, event_id, None, "EVIDENCE_COLLECTION", 3, 4))
+    rejects(db, transition, (uid(314), case_id, event_id, None, "EXECUTION", 0, 1))
+    rejects(db, transition, (uid(315), case_id, event_id, None, "INTAKE", 1, 2))
+    rejects(db, transition, (uid(316), case_id, event_id, "EXECUTION", "INTAKE", 0, 1))
+    rejects(db, transition, (uid(317), case_id, event_id, "EXECUTION", "PAUSED_USER", 4, 6))
+
+    db.execute(transition, (uid(318), case_id, event_id, "INTAKE", "CLARIFICATION", 1, 2))
+
+
+def test_tb04a_new_constraints_are_validated_not_deferred(db: psycopg.Connection) -> None:
+    """An unvalidated constraint is an unenforced invariant (`14 v0.3` §5, §8)."""
+    rows = db.execute(
+        """
+        SELECT conname, convalidated FROM pg_constraint
+        WHERE conname IN (
+          'ck_state_transition_genesis',
+          'ck_pre_experiment_dismissal_case_uuid_v7',
+          'fk_pre_experiment_dismissal_case',
+          'uq_pre_experiment_dismissal_case',
+          'uq_command_receipt_idempotency',
+          'fk_command_receipt_case'
+        )
+        """
+    ).fetchall()
+    assert len(rows) == 6
+    assert all(validated for _, validated in rows)
+
+
+def test_tb04a_command_receipt_is_a_transport_independent_idempotency_register(
+    db: psycopg.Connection,
+) -> None:
+    """T03 / `DMV-6`: UNIQUE(command_type, idempotency_key), case optional."""
+    case_id = uid(320)
+    insert_case(db, case_id)
+
+    receipt = """
+        INSERT INTO command_receipt
+          (id, command_type, idempotency_key, case_id, actor_type, outcome_ref, outcome_kind)
+        VALUES (%s, %s, %s, %s, 'user', 'synthetic-outcome', %s)
+    """
+    # A creating command has no case yet — `SubmitOpportunity` is the reason the
+    # register cannot hang off `inbox` or off `case`.
+    db.execute(receipt, (uid(321), "SubmitOpportunity", "synthetic-key-1", None, "applied"))
+    rejects(db, receipt, (uid(322), "SubmitOpportunity", "synthetic-key-1", None, "rejected"))
+
+    # The same key under a different command is a different domain input.
+    db.execute(receipt, (uid(323), "RequestClarification", "synthetic-key-1", case_id, "applied"))
+    rejects(db, receipt, (uid(324), "SubmitOpportunity", "synthetic-key-2", uid(398), "applied"))
+    rejects(db, receipt, (uid(325), "SubmitOpportunity", "synthetic-key-3", case_id, "unknown"))
+
+
+def test_tb04a_command_receipt_privileges_match_the_privilege_matrix(
+    db: psycopg.Connection,
+) -> None:
+    """T04 / `14 v0.3` §12: worker reads and appends; web has no privilege."""
+    for privilege in ("SELECT", "INSERT", "UPDATE", "DELETE"):
+        granted = db.execute(
+            "SELECT has_table_privilege('pls_web', 'command_receipt', %s)", (privilege,)
+        ).fetchone()
+        assert granted == (False,), f"pls_web must not hold {privilege} on command_receipt"
+
+    for privilege, expected in (
+        ("SELECT", True),
+        ("INSERT", True),
+        ("UPDATE", False),
+        ("DELETE", False),
+    ):
+        granted = db.execute(
+            "SELECT has_table_privilege('pls_worker', 'command_receipt', %s)", (privilege,)
+        ).fetchone()
+        assert granted == (expected,), f"pls_worker privilege {privilege} does not match §12"
+
+
+def test_tb04a_malicious_worker_cannot_rewrite_a_command_receipt(
+    db: psycopg.Connection,
+) -> None:
+    """T04: allowed SELECT/INSERT pass; UPDATE and DELETE are rejected by the DB."""
+    case_id = uid(330)
+    insert_case(db, case_id)
+
+    db.execute("SET ROLE pls_worker")
+    try:
+        db.execute(
+            """
+            INSERT INTO command_receipt
+              (id, command_type, idempotency_key, case_id, actor_type, outcome_ref, outcome_kind)
+            VALUES (%s, 'SubmitOpportunity', 'synthetic-worker-key', %s, 'user',
+                    'synthetic-outcome', 'applied')
+            """,
+            (uid(331), case_id),
+        )
+        stored = db.execute(
+            "SELECT outcome_kind FROM command_receipt WHERE id = %s", (uid(331),)
+        ).fetchone()
+        assert stored == ("applied",)
+
+        rejects(
+            db, "UPDATE command_receipt SET outcome_kind = 'rejected' WHERE id = %s", (uid(331),)
+        )
+        rejects(db, "DELETE FROM command_receipt WHERE id = %s", (uid(331),))
+        rejects(db, "TRUNCATE TABLE command_receipt", ())
     finally:
         db.execute("RESET ROLE")
