@@ -16,7 +16,7 @@ services:
     environment:
       DATABASE_URL: postgresql://pls_dev:pls_dev_only@postgres:5432/pls_dev
       PLS_ENV: development
-      PLS_EXPECTED_MIGRATION_HEAD: "0004_runtime_privileges"
+      PLS_EXPECTED_MIGRATION_HEAD: "0005_schema_v03_errata"
       PLS_TELEGRAM_BOT_TOKEN: synthetic-dev-bot-token
       PLS_TELEGRAM_WEBHOOK_SECRET: synthetic-dev-webhook-secret
       PLS_PRIORITY_POLICY_VERSION: "10-decisions-log-v2:PLS-011"

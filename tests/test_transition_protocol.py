@@ -66,13 +66,21 @@ def db(migrated_database: str) -> psycopg.Connection:
 
 
 def seed_case(connection: psycopg.Connection, *, state: str = "EXECUTION") -> UUID:
-    """Insert one synthetic case at version 0 and return its id."""
+    """Insert one synthetic case just past genesis and return its id.
+
+    `case_version = 1` is the first version a case can hold: version 0 exists
+    only before the genesis transition, and the genesis CHECK of `14 v0.3` §3.3
+    admits exactly one transition out of it — `from_state IS NULL` into `INTAKE`,
+    written by the creation protocol `17 v0.2` §3.7 that TB-06 owns. A fixture
+    seeding an arbitrary state at version 0 would describe a case the schema
+    does not admit.
+    """
     case_id = uuid7()
     with connection.cursor() as cursor:
         cursor.execute(
             """
             INSERT INTO case_record (id, current_state, case_version, depth_level, timezone)
-            VALUES (%s, %s, 0, 'std', 'UTC')
+            VALUES (%s, %s, 1, 'std', 'UTC')
             """,
             (case_id, state),
         )
@@ -103,7 +111,7 @@ def count(connection: psycopg.Connection, sql: str, params: tuple[object, ...]) 
         return cursor.execute(sql, params).fetchone()[0]
 
 
-def command_for(case_id: UUID, *, version: int = 0, to_state: str = "EVIDENCE_COLLECTION", **kw):
+def command_for(case_id: UUID, *, version: int = 1, to_state: str = "EVIDENCE_COLLECTION", **kw):
     return TransitionCommand(
         case_id=case_id,
         expected_case_version=version,
@@ -123,14 +131,14 @@ def test_protocol_commits_event_transition_and_projection_together(
 
     assert outcome.from_state == "EXECUTION"
     assert outcome.to_state == "EVIDENCE_COLLECTION"
-    assert outcome.case_version_before == 0
-    assert outcome.case_version_after == 1
+    assert outcome.case_version_before == 1
+    assert outcome.case_version_after == 2
     assert is_uuid7(outcome.event_id) and is_uuid7(outcome.transition_id)
 
     with db.cursor() as cursor:
         facts = load_case_facts(cursor, case_id, lock=False)
     assert facts.current_state == "EVIDENCE_COLLECTION"
-    assert facts.case_version == 1
+    assert facts.case_version == 2
     assert facts.current_status is None
     assert count(db, "SELECT count(*) FROM event WHERE id = %s", (outcome.event_id,)) == 1
     assert (
@@ -169,10 +177,10 @@ def test_version_mismatch_is_a_conflict_and_leaves_no_effect(db: psycopg.Connect
     apply_transition(db, command_for(case_id))
 
     with pytest.raises(VersionConflict) as conflict:
-        apply_transition(db, command_for(case_id, version=0))
+        apply_transition(db, command_for(case_id, version=1))
 
-    assert conflict.value.expected == 0
-    assert conflict.value.facts.case_version == 1
+    assert conflict.value.expected == 1
+    assert conflict.value.facts.case_version == 2
     assert conflict.value.facts.current_state == "EVIDENCE_COLLECTION"
     assert count(db, "SELECT count(*) FROM state_transition WHERE case_id = %s", (case_id,)) == 1
 
@@ -201,7 +209,7 @@ def test_guard_rejection_aborts_the_whole_transaction(db: psycopg.Connection) ->
     assert count(db, "SELECT count(*) FROM state_transition WHERE case_id = %s", (case_id,)) == 0
     assert count(db, "SELECT count(*) FROM outbox WHERE case_id = %s", (case_id,)) == 0
     with db.cursor() as cursor:
-        assert load_case_facts(cursor, case_id, lock=False).case_version == 0
+        assert load_case_facts(cursor, case_id, lock=False).case_version == 1
 
 
 def test_terminal_transition_sets_status_locks_case_and_releases_slot(
@@ -228,7 +236,7 @@ def test_terminal_transition_sets_status_locks_case_and_releases_slot(
     )
 
     with pytest.raises(TerminalLocked):
-        apply_transition(db, command_for(case_id, version=1, to_state="EXECUTION"))
+        apply_transition(db, command_for(case_id, version=2, to_state="EXECUTION"))
 
 
 def test_paused_state_sets_status_without_terminal_lock(db: psycopg.Connection) -> None:
@@ -277,7 +285,7 @@ def test_diagnostic_hold_blocks_every_transition_without_exemption(
                 db,
                 command_for(
                     case_id,
-                    version=1,
+                    version=2,
                     to_state=target,
                     guards=(passing_guard(),),
                     notifications=(
@@ -295,7 +303,7 @@ def test_diagnostic_hold_blocks_every_transition_without_exemption(
     assert count(db, "SELECT count(*) FROM outbox WHERE case_id = %s", (case_id,)) == 0
     with db.cursor() as cursor:
         facts = load_case_facts(cursor, case_id, lock=False)
-    assert facts.case_version == 1
+    assert facts.case_version == 2
     assert facts.current_state == "EXECUTION"
     assert facts.current_status is None
     assert facts.terminal_locked_at is None
@@ -366,7 +374,7 @@ def test_duplicate_version_for_a_case_is_rejected_by_the_database(
                 INSERT INTO state_transition
                   (id, case_id, event_id, from_state, to_state, guard_results_ref,
                    case_version_before, case_version_after)
-                VALUES (%s, %s, %s, 'EXECUTION', 'EVIDENCE_COLLECTION', '[]', 0, %s)
+                VALUES (%s, %s, %s, 'EXECUTION', 'EVIDENCE_COLLECTION', '[]', 1, %s)
                 """,
                 (uuid7(), case_id, event_id, outcome.case_version_after),
             )
@@ -404,6 +412,6 @@ def test_concurrent_commands_produce_exactly_one_effect(migrated_database: str) 
             == 1
         )
         with verify.cursor() as cursor:
-            assert load_case_facts(cursor, case_id, lock=False).case_version == 1
+            assert load_case_facts(cursor, case_id, lock=False).case_version == 2
     finally:
         verify.close()
