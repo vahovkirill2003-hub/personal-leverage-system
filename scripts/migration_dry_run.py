@@ -14,8 +14,8 @@ def main() -> None:
     config.output_buffer = output
     command.upgrade(config, "head", sql=True)
     sql = output.getvalue()
-    if "0004_runtime_privileges" not in sql:
-        raise SystemExit("migration dry-run did not reach the TB-04 head")
+    if "0005_schema_errata_v03" not in sql:
+        raise SystemExit("migration dry-run did not reach the TB-04a head")
 
 
 if __name__ == "__main__":
